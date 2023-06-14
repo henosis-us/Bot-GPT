@@ -8,6 +8,7 @@ from utilties.vars import OPENAI_API_KEY, DISCORD_TOKEN
 from discord.ext import commands
 import aiohttp
 from utilties.tokenizer import num_tokens_from_string
+from workout_utils.protein_tracking import ProteinTracker
 # Set up OpenAI API
 openai.api_key = OPENAI_API_KEY
 
@@ -16,10 +17,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.presences - True
 bot = commands.Bot(command_prefix='!', intents=intents)
-
+USER_ID = 140224314690502656
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
+    bot.protein_tracker = ProteinTracker(bot, USER_ID)
 
 async def send_text_or_file(ctx, generated_text):
     max_width = 150
@@ -62,6 +64,7 @@ async def handle_prompt(ctx, prompt):
             return
     return prompt
 
+##commands
 @bot.command(name='gpt3', help='cheapest model essentially free to run, great for simple reasoning or simple tasks/generations, can intake around 4k tokens')
 async def gpt3(ctx, *, prompt: str = None):
     prompt = await handle_prompt(ctx, prompt)
@@ -127,5 +130,40 @@ async def tokens(ctx, *, message: str = None):
     num_tokens = num_tokens_from_string(message, "cl100k_base")
     await ctx.send(f'The message contains {num_tokens} tokens.')
 
+@bot.command(name='getuserdata', help='gets the protein data for a user. returns a table & graph')
+async def getuserdata(ctx, username: str):
+    for user in bot.users:
+        if user.name == username:
+            tracker = ProteinTracker(bot, user.id)
+            user_data, img_path = tracker.get_user_data(user.id)
+            await ctx.send(f"```{user_data}```")
+            await ctx.send(file=discord.File(img_path))
+            return
+    await ctx.send("User not found.")
+    
+@bot.command(name='manualprotein', help='manual protein entry for if you miss a day. Example usage: !manualprotein User01 12/31/2023 100 "Description of meals"')
+async def manualprotein(ctx, username: str, date: str, protein_info: str, description_info: str):
+    for user in bot.users:
+        if user.name == username:
+            tracker = ProteinTracker(bot, user.id)
+            tracker.manual_record_protein_info(date, protein_info, description_info)
+            await ctx.send(f"Protein info for {username} has been manually updated for {date}.")
+            return
+    await ctx.send("User not found.")
+
+@bot.command(name='listusers', help='Lists all the users the bot has connected to in its servers.')
+async def list_users(ctx):
+    users = []
+    for guild in bot.guilds:
+        for member in guild.members:
+            if member not in users:
+                users.append(member)
+
+    user_list = 'Connected users:\n'
+    for user in users:
+        user_list += f'{user.name}#{user.discriminator}\n'
+
+    await ctx.send(user_list)
+    
 if __name__ == '__main__':
     bot.run(DISCORD_TOKEN)
