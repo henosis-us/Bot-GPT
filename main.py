@@ -130,26 +130,46 @@ async def tokens(ctx, *, message: str = None):
     num_tokens = num_tokens_from_string(message, "cl100k_base")
     await ctx.send(f'The message contains {num_tokens} tokens.')
 
-@bot.command(name='getuserdata', help='gets the protein data for a user. returns a table & graph')
-async def getuserdata(ctx, username: str):
-    for user in bot.users:
-        if user.name == username:
-            tracker = ProteinTracker(bot, user.id)
-            user_data, img_path = tracker.get_user_data(user.id)
-            await ctx.send(f"```{user_data}```")
-            await ctx.send(file=discord.File(img_path))
-            return
-    await ctx.send("User not found.")
+@bot.command(name='getuserdata', help='Gets the protein data for a user. Returns a table & graph.')
+async def getuserdata(ctx, user_id: int):
+    try:
+        user = await bot.fetch_user(user_id)
+    except Exception as e:
+        await ctx.send("User not found.")
+        return
+
+    tracker = ProteinTracker(bot, user.id)
+    user_data, img_path = tracker.get_user_data(user.id)
+    await ctx.send(f"```{user_data}```")
+    await ctx.send(file=discord.File(img_path))
+
     
 @bot.command(name='manualprotein', help='manual protein entry for if you miss a day. Example usage: !manualprotein User01 12/31/2023 100 "Description of meals"')
-async def manualprotein(ctx, username: str, date: str, protein_info: str, description_info: str):
-    for user in bot.users:
-        if user.name == username:
-            tracker = ProteinTracker(bot, user.id)
-            tracker.manual_record_protein_info(date, protein_info, description_info)
-            await ctx.send(f"Protein info for {username} has been manually updated for {date}.")
-            return
-    await ctx.send("User not found.")
+async def manualprotein(ctx, user_id: int = None, date: str = None, protein_info: str = None, description_info: str = None):
+    if user_id is None or date is None or protein_info is None or description_info is None:
+        missing_args = []
+        if user_id is None:
+            missing_args.append("user_id")
+        if date is None:
+            missing_args.append("date")
+        if protein_info is None:
+            missing_args.append("protein_info")
+        if description_info is None:
+            missing_args.append("description_info")
+
+        await ctx.send(f"Missing arguments: {', '.join(missing_args)}. Please provide all required arguments.")
+        return
+
+    try:
+        user = await bot.fetch_user(user_id)
+    except Exception as e:
+        await ctx.send("User not found.")
+        return 
+
+    tracker = ProteinTracker(bot, user.id)
+    tracker.manual_record_protein_info(date, protein_info, description_info)
+    await ctx.send(f"Protein info for {user.name} has been manually updated for {date}.")
+
 
 @bot.command(name='listusers', help='Lists all the users the bot has connected to in its servers.')
 async def list_users(ctx):

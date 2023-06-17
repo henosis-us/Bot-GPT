@@ -7,7 +7,7 @@ async def generate_response(model_name, prompt):
         response = openai.ChatCompletion.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "You are chatting with an AI trained by OpenAI."},
+                {"role": "system", "content": "You are a helpful assistant, please markdown all code with highlight.js style"},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
