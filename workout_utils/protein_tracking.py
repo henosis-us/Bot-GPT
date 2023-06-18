@@ -34,7 +34,7 @@ class ProteinTracker:
 
     @tasks.loop(hours=24)
     async def protein_tracker(self):
-        user = self.bot.fetch_user(self.user_id)
+        user = await self.bot.fetch_user(self.user_id)
         if user is not None:
             if not self.user_responded:
                 await self.add_placeholder_data()
@@ -44,6 +44,7 @@ class ProteinTracker:
             self.user_responded = False
         else:
             print(f"Couldn't find user with ID {self.user_id}.")
+
 
 
     async def add_placeholder_data(self):
