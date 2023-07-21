@@ -24,21 +24,24 @@ async def on_ready():
     bot.protein_tracker = ProteinTracker(bot, USER_ID)
 
 async def send_text_or_file(ctx, generated_text):
-    max_width = 150
-    def reformat_text(text, max_width=max_width):  # Adjusted max_width for mobile users
-        return '\n'.join(textwrap.wrap(text, width=max_width))
-
-    if len(generated_text) <= 2000:
-        mention = ctx.author.mention  # Mention the user who sent the command
-        await ctx.send(f"{mention} {generated_text}")
-    else:
-        # Reformat the generated_text only if it's sent as a file
-        reformatted_text = reformat_text(generated_text)
-
-        with io.StringIO(reformatted_text) as temp_file:
-            temp_file.name = 'generated_text.txt'
+    async with aiohttp.ClientSession() as session:
+        if len(generated_text) <= 2000: 
             mention = ctx.author.mention  # Mention the user who sent the command
-            await ctx.send(f"{mention} Here is the generated text:", file=discord.File(temp_file))
+            await ctx.send(f"{mention} {generated_text}")
+        else:
+            # Save to Hastebin
+            data = generated_text.encode('utf-8') #data must be bytes
+            async with session.post("http://136.36.137.50:7777/documents", data=data) as resp:
+                try:
+                    data = await resp.json()
+                except Exception as e:
+                    print(f"An exception occurred: {e}")
+                    return
+                key = data['key']
+                paste_url = f"http://136.36.137.50:7777/{key}"
+              
+                # Send it 
+                await ctx.send(f"{ctx.author.mention} Your generated text was too large to display here, so it was pasted at {paste_url}")  
     
 async def read_txt_file(file_url):
     async with aiohttp.ClientSession() as session:
@@ -65,22 +68,21 @@ async def handle_prompt(ctx, prompt):
     return prompt
 
 ##commands
-@bot.command(name='gpt3', help='cheapest model essentially free to run, great for simple reasoning or simple tasks/generations, can intake around 4k tokens')
+@bot.command(name='gpt3', help='Selects the appropriate model based on token length. If token length <= 3500, use gpt-3.5-turbo; else, use gpt-3.5-turbo-16k.')
 async def gpt3(ctx, *, prompt: str = None):
     prompt = await handle_prompt(ctx, prompt)
     if prompt is None:
         return
-    generated_text = await generate_response("gpt-3.5-turbo", prompt)
-    print(generated_text)
-    await send_text_or_file(ctx, generated_text)
+    
+    token_length = num_tokens_from_string(prompt, "cl100k_base")
 
-        
-@bot.command(name='gpt3long', help='minor cost increase with no increase in reasoning but can intake around 16k tokens')
-async def gpt3(ctx, *, prompt: str = None):
-    prompt = await handle_prompt(ctx, prompt)
-    if prompt is None:
-        return
-    generated_text = await generate_response("gpt-3.5-turbo-16k", prompt)
+    if token_length <= 3500:
+        model_name = "gpt-3.5-turbo"
+    else:
+        model_name = "gpt-3.5-turbo-16k"
+
+    generated_text = await generate_response(model_name, prompt)
+    
     print(generated_text)
     await send_text_or_file(ctx, generated_text)
 
@@ -89,7 +91,7 @@ async def gpt4(ctx, *, prompt: str = None):
     prompt = await handle_prompt(ctx, prompt)
     if prompt is None:
         return
-    generated_text = await generate_response("gpt-4", prompt)
+    generated_text = await generate_response("gpt-4-0613", prompt)
     print(generated_text)
     await send_text_or_file(ctx, generated_text)
         

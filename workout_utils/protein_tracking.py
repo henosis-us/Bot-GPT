@@ -56,7 +56,7 @@ class ProteinTracker:
                 {
                     "userID": self.user_id,
                     "dateTime": dateTime,
-                    "protein_info": "No response",
+                    "protein_info": 0,
                     "description_info": "No response",
                 },
             )
