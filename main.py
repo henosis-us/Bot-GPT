@@ -2,18 +2,19 @@ from utilties.Openai_Utils import generate_image, assistant_response, assistant_
 import os
 import discord
 import openai
+from vars import OPENAI_API_KEY, DISCORD_TOKEN
 from openai import OpenAI
 from discord import File
 from discord.ext import commands
 import aiohttp
 from utilties.tokenizer import num_tokens_from_string
-import matplotlib.pyplot as plt
 import chardet
 from youtube_transcript_grabber import get_transcript
 from pplxapi import pplxresponse
+openai_api_key = OPENAI_API_KEY
 # Set up OpenAI API
-client = OpenAI(api_key=OPENAI_API_KEY)
-
+client = OpenAI(api_key=openai_api_key)
+discord_key = DISCORD_TOKEN
 # Set up Discord bot
 intents = discord.Intents.default()
 intents.message_content = True
@@ -282,4 +283,4 @@ async def on_message(message):
         # This ensures that the bot's command system can also handle messages
         await bot.process_commands(message)
 if __name__ == '__main__':
-    bot.run(DISCORD_TOKEN)
+    bot.run(discord_key)

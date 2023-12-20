@@ -16,10 +16,11 @@ async def pplxresponse(message):
             }
         ]
     }
+    from vars import PPLX_API_KEY
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": "Bearer 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"
+        "authorization": f"Bearer {PPLX_API_KEY}"
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=payload, headers=headers) as response:
