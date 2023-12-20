@@ -1,0 +1,10 @@
+discord.py
+openai
+aiohttp
+tiktoken 
+matplotlib
+chardet
+requests
+youtube_transcript_api
+beautifulsoup4
+asyncio
