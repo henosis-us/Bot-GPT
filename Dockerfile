@@ -6,7 +6,15 @@ ENV DATABASE_PATH data/protein_data.db
 
 # Set timezone
 ENV TZ=America/Denver
-
+ARG OPENAI_API_KEY_FILE=vars.py
+ARG PPLX_API_KEY_FILE=vars.py
+ARG DISCORD_TOKEN_FILE=vars.py
+RUN export OPENAI_API_KEY=$(grep 'OPENAI_API_KEY' $OPENAI_API_KEY_FILE | cut -d '"' -f 2) && \
+    export PPLX_API_KEY=$(grep 'PPLX_API_KEY' $PPLX_API_KEY_FILE | cut -d '"' -f 2) && \
+    export DISCORD_TOKEN=$(grep 'DISCORD_TOKEN' $DISCORD_TOKEN_FILE | cut -d '"' -f 2)
+ENV OPENAI_API_KEY=${OPENAI_API_KEY}
+ENV PPLX_API_KEY=${PPLX_API_KEY}
+ENV DISCORD_TOKEN=${DISCORD_TOKEN}
 # Set working directory
 WORKDIR /app
 
