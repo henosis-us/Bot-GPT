@@ -26,15 +26,16 @@ async def on_ready():
 async def send_text_or_file(ctx, generated_text):
     if len(generated_text) <= 1500: 
         mention = ctx.author.mention  # Mention the user who sent the command
-        await ctx.send(f"{mention} {generated_text}")
+        return await ctx.send(f"{mention} {generated_text}")  # Return the message object
     else:
         # Write the message to a .txt file
         with open('response.txt', 'w') as f:
             f.write(generated_text)
         # Send the .txt file as an attachment
-        await ctx.send(file=File('response.txt'))
+        message = await ctx.send(file=File('response.txt'))  # Send and capture the message object
         # Remove the file after sending it
         os.remove('response.txt')
+        return message  # Return the message object
 def get_first_assistant_message_unstructured(data):
     # Loop through the messages to find the first one with the role 'assistant'
     for message in data:
@@ -75,11 +76,23 @@ async def handle_prompt(ctx, prompt):
 async def gpt3(ctx, *, prompt: str = None):
     # Add an eye emoji reaction to the user's command message
     await ctx.message.add_reaction("👀")
+    # Handle the prompt (including attached files if any)
     prompt = await handle_prompt(ctx, prompt)
     if prompt is None:
         return
+    # Call the assistant and get the response
     responses = await assistant_response3(prompt=prompt)
+    if not responses:
+        await ctx.send(f"{ctx.author.mention} There was an error processing your request.")
+        return
+    # Extract the thread_id from the response
+    thread_id = responses[0].thread_id
+    response_message = await send_text_or_file(ctx, generated_text)
+    # Store the thread_id with the message_id as the key
+    openai_thread_ids[response_message.id] = thread_id
+    # Get the first assistant message from the structured response
     generated_text = get_first_assistant_message_unstructured(responses) if responses else None
+    # Send the generated text as a message or a file
     await send_text_or_file(ctx, generated_text)
     # Add a check mark reaction to the user's command message after the reply is sent
     await ctx.message.add_reaction("✅")
@@ -87,12 +100,23 @@ async def gpt3(ctx, *, prompt: str = None):
 async def gpt4(ctx, *, prompt: str = None):
     # Add an eye emoji reaction to the user's command message
     await ctx.message.add_reaction("👀")
+    # Handle the prompt (including attached files if any)
     prompt = await handle_prompt(ctx, prompt)
     if prompt is None:
         return
+    # Call the assistant and get the response
     responses = await assistant_response(prompt=prompt)
+    if not responses:
+        await ctx.send(f"{ctx.author.mention} There was an error processing your request.")
+        return
+    # Extract the thread_id from the response
+    thread_id = responses[0].thread_id
+    # Get the first assistant message from the structured response
     generated_text = get_first_assistant_message_unstructured(responses) if responses else None
-    await send_text_or_file(ctx, generated_text)
+    # Send the generated text as a message or a file and store the response message
+    response_message = await send_text_or_file(ctx, generated_text)
+    # Store the thread_id with the response message_id as the key
+    openai_thread_ids[response_message.id] = thread_id
     # Add a check mark reaction to the user's command message after the reply is sent
     await ctx.message.add_reaction("✅")
 @bot.command(name='hermes')
@@ -165,122 +189,35 @@ async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
-    # Currently, we do nothing with direct messages (DMs)
-    if isinstance(message.channel, discord.DMChannel):
-        pass
+
+    # Debug: Print the current state of openai_thread_ids
+    print(f"Current openai_thread_ids: {openai_thread_ids}")
+
+    # Debug: Print message reference
+    print(f"Message reference: {message.reference}")
+
+    # If the message is a reply, handle continuing the conversation
+    if message.reference:
+        referenced_message_id = message.reference.message_id
+        # Check if the referenced message ID is in openai_thread_ids
+        if referenced_message_id in openai_thread_ids:
+            # Retrieve the OpenAI thread ID
+            openai_thread_id = openai_thread_ids[referenced_message_id]
+            # Add the user's reply to the OpenAI thread
+            prompt = message.content  # Assuming you want to use the message content as the prompt
+            responses = await assistant_response(openai_thread_id=openai_thread_id, prompt=prompt)
+            generated_text = get_first_assistant_message_unstructured(responses) if responses else None
+            # Create a context object from the message
+            ctx = await bot.get_context(message)
+            # Send the bot's response in the Discord thread
+            await send_text_or_file(ctx, generated_text)
+        else:
+            print(f"Referenced message ID is NOT in openai_thread_ids.")
     else:
-# Check if the bot is replied to        
-        if message.reference and message.reference.resolved.author == bot.user:
-            # Process attachments if any
-            replied_message = message.reference.resolved.content
-            if message.reference.resolved.attachments:
-                attachment = message.reference.resolved.attachments[0]
-                if attachment.filename.endswith('.txt'):
-                    # Download the file and read its content
-                    file_content = await read_txt_file(attachment.url)
-                    replied_message = file_content if file_content else replied_message
-            # Concatenate the bot's message and the user's reply
-            if isinstance(replied_message, bytes):
-                replied_message = replied_message.decode('utf-8')
-            combined_message = "bot message: " + replied_message + "\nuser message: " + message.content        
-            # Initialize thread and openai_thread_id
-            thread = None
-            openai_thread_id = None
-            # Generate a thread name using the GPT-3.5-turbo-1106 model. The prompt is the message content, and we ask the model to summarize it into a thread title
-            try:
-                print(message.content)
-                responses = await assistant_response3(prompt=f"Summarize this into a short title: {combined_message}")
-                thread_name = get_first_assistant_message_unstructured(responses) if responses else None
-                print(f"Generated thread name: {thread_name}")
-                thread_name = thread_name[:100].strip()
-                thread = await message.channel.create_thread(name=thread_name)
-                print("Thread created successfully")
-                await thread.add_user(message.author)
-                print("User added to thread successfully")
-            except Exception as e:
-                print(f"Exception caught: {e}")
-                # If the generated thread name is empty or only contains whitespace, we use a default name. The default name is "Thread with" followed by the display name of the author of the message
-                if not thread_name or thread_name.isspace():
-                    thread_name = f"Thread with {message.author.display_name}"
-                # Create a new thread in the Discord channel where the message was sent. The name of the thread is the generated or default name
-                thread = await message.channel.create_thread(name=thread_name)
-            # Add the ID of the created thread to the set of IDs of threads created by the bot
-            created_threads.add(thread.id)
-            # Check if the combined message is longer than 2000 characters
-            if len(combined_message) > 2000:
-                # If it is, split the message into chunks of 2000 characters and send each chunk as a separate message
-                for i in range(0, len(combined_message), 2000):
-                    await thread.send(combined_message[i:i+2000])
-            else:
-                # If the combined message is not longer than 2000 characters, send it as is
-                await thread.send(combined_message)
-            # Create a message in the OpenAI thread for the message being replied to and the user's reply
-            message_thread = client.beta.threads.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"bot message: {replied_message}"
-                    },
-                    {
-                        "role": "user",
-                        "content": f"user message: {message.content}"
-                    }                
-                ]
-            )
-            thread_content = openai.beta.threads.messages.list(str(message_thread.id))
-            # Store the ID of the OpenAI thread in a dictionary, using the ID of the Discord thread as the key
-            openai_thread_ids[thread.id] = message_thread.id
-            # Store the ID of the OpenAI thread in a variable for later use
-            openai_thread_id = message_thread.id
-            # Add a reaction of an eye emoji to the user reply
-            await message.add_reaction("👁️")
-            # Get the assistant's responses
-            responses = await assistant_response(openai_thread_id)
-            if not responses:
-                print("error no response")
-                response = "oopsie"
-            # Get the updated thread
-            thread_messages = client.beta.threads.messages.list(openai_thread_id)
-            last_message = get_first_assistant_message_unstructured(thread_messages.data)
-            # Send the last message to the Discord thread
-            last_message_content = last_message
-            # Check if the message is longer than 2000 characters
-            if len(last_message_content) > 2000:
-                # If it is, split the message into chunks of 2000 characters and send each chunk as a separate message
-                for i in range(0, len(last_message_content), 2000):
-                    await thread.send(last_message_content[i:i+2000])
-            else:
-                # If the message is not longer than 2000 characters, send it as is
-                await thread.send(last_message_content)
-        if message.channel.id in created_threads:
-            # Handle the message in the thread
-            openai_thread_id = openai_thread_ids[message.channel.id]
-            # Add the user's message to the OpenAI thread
-            client.beta.threads.messages.create(
-                thread_id=openai_thread_id,
-                role="user",
-                content=message.content
-            )
-            # Get the assistant's responses
-            responses = await assistant_response(openai_thread_id)
-            if not responses:
-                print("error no response")
-                response = "oopsie"
-            # Get the updated thread
-            thread_messages = client.beta.threads.messages.list(openai_thread_id)
-            last_message = get_first_assistant_message_unstructured(thread_messages.data)
-            # Send the last message to the Discord thread
-            last_message_content = last_message
-            # Check if the message is longer than 2000 characters
-            if len(last_message_content) > 2000:
-                # If it is, split the message into chunks of 2000 characters and send each chunk as a separate message
-                for i in range(0, len(last_message_content), 2000):
-                    await message.channel.send(last_message_content[i:i+2000])
-            else:
-                # If the message is not longer than 2000 characters, send it as is
-                await message.channel.send(last_message_content)
-            return
-        # This ensures that the bot's command system can also handle messages
-        await bot.process_commands(message)
+        # The message is not a reply and will be ignored by on_message handler.
+        print("The message is not a reply and will be ignored by on_message handler.")
+
+    # This ensures that the bot's command system can also handle messages
+    await bot.process_commands(message)
 if __name__ == '__main__':
     bot.run(discord_key)
