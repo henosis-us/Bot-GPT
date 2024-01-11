@@ -18,12 +18,16 @@ async def fetch_and_prepare_content_for_lm_tool(url):
         return None
 async def assistant_response(openai_thread_id=None, prompt=None):
     print(f"OpenAI Thread ID: {openai_thread_id}")  # Debugging line
+    print(f"Prompt: {prompt}")  # Debugging line
     # If an OpenAI thread ID is provided, use it, otherwise create a new thread
+    # Split the prompt into chunks of 32000 characters if necessary
+    prompt_chunks = [prompt[i:i+32000] for i in range(0, len(prompt), 32000)]
     if openai_thread_id:
         thread = client.beta.threads.retrieve(openai_thread_id)
+        # Append the prompt as messages to the thread
+        for chunk in prompt_chunks:
+            client.beta.threads.messages.create(thread.id, role="user", content=chunk)
     else:
-        # Split the prompt into chunks of 32000 characters if necessary
-        prompt_chunks = [prompt[i:i+32000] for i in range(0, len(prompt), 32000)]
         # Use the first chunk to create the thread
         first_chunk = prompt_chunks.pop(0)
         thread = client.beta.threads.create(messages=[{"role": "user", "content": first_chunk}])
@@ -31,8 +35,8 @@ async def assistant_response(openai_thread_id=None, prompt=None):
         # Append remaining chunks as messages to the thread
         for chunk in prompt_chunks:
             client.beta.threads.messages.create(thread.id, role="user", content=chunk)
-            thread_messages = client.beta.threads.messages.list(thread.id)
-            print(thread_messages.data)
+    thread_messages = client.beta.threads.messages.list(thread.id)
+    print(thread_messages.data)
     print(f"Thread: {thread}")  # Debugging line
     # Use the hard-coded assistant ID
     assistant_id = "asst_z9ChMmBNvr3FucVrXZFZ6vpl"
@@ -51,6 +55,7 @@ async def assistant_response(openai_thread_id=None, prompt=None):
             tool_outputs = []  # Initialize an empty list to collect tool outputs
             for tool_call in run.required_action.submit_tool_outputs.tool_calls:
                 function_name = tool_call.function.name
+                print(f"Raw arguments received: {tool_call.function.arguments}")
                 arguments = json.loads(tool_call.function.arguments)
                 output = None
                 if function_name == "urlFetch":

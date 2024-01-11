@@ -116,8 +116,9 @@ async def gpt4(ctx, *, prompt: str = None):
     # Get the first assistant message from the structured response
     generated_text = get_first_assistant_message_unstructured(responses) if responses else None
     # Send the generated text as a message or a file and store the response message
-    response_message, thread_id = await send_text_or_file(ctx, generated_text, thread_id) 
-    openai_thread_ids[response_message.id] = thread_id  
+    response_message, thread_id = await send_text_or_file(ctx, generated_text, thread_id)
+    # Store the thread_id with the message_id as the key
+    openai_thread_ids[response_message.id] = thread_id
     # Add a check mark reaction to the user's command message after the reply is sent
     await ctx.message.add_reaction("✅")
 @bot.command(name='hermes')
