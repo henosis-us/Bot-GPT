@@ -13,8 +13,9 @@ COPY . /app
 # Install dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Set environment variables from vars.py
-RUN python -c "import vars; import os; os.environ['OPENAI_API_KEY'] = vars.OPENAI_API_KEY; os.environ['PPLX_API_KEY'] = vars.PPLX_API_KEY; os.environ['DISCORD_TOKEN'] = vars.DISCORD_TOKEN"
+ARG OPENAI_API_KEY
+ARG PPLX_API_KEY
+ARG DISCORD_TOKEN
 
 # Command to run the main script
 CMD ["python", "main.py"]

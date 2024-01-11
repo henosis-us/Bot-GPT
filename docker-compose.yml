@@ -3,4 +3,10 @@ services:
   piss_bot:
     build:
       context: .
+      args:
+        OPENAI_API_KEY: ${OPENAI_API_KEY}
+        PPLX_API_KEY: ${PPLX_API_KEY}
+        DISCORD_TOKEN: ${DISCORD_TOKEN}
       dockerfile: Dockerfile 
+    env_file:
+        - vars.env
