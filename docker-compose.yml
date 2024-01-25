@@ -1,12 +1,10 @@
-version: '3'
-services:
-  piss_bot:
-    build:
-      context: .
-      args:
-        OPENAI_API_KEY: ${OPENAI_API_KEY}
-        PPLX_API_KEY: ${PPLX_API_KEY}
-        DISCORD_TOKEN: ${DISCORD_TOKEN}
-      dockerfile: Dockerfile 
-    env_file:
-        - vars.env
+   version: '3'
+   services:
+     GPT_bot:
+       build:
+         context: .
+         dockerfile: Dockerfile
+       environment:
+         - DISCORD_TOKEN=${DISCORD_TOKEN}
+         - OPENAI_API_KEY=${OPENAI_API_KEY}
+         - PPLX_API_KEY=${PPLX_API_KEY}

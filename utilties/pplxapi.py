@@ -1,6 +1,7 @@
 import aiohttp
 import json
-from vars import PPLX_API_KEY
+import os
+PPLX_API_KEY = os.getenv('PPLX_API_KEY')
 async def pplxresponse(message):
     print(PPLX_API_KEY)
     url = "https://api.perplexity.ai/chat/completions"

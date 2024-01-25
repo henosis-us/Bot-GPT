@@ -2,7 +2,9 @@ from utilties.Openai_Utils import generate_image, assistant_response, assistant_
 import os
 import discord
 import openai
-from vars import OPENAI_API_KEY, DISCORD_TOKEN
+from relationship_assistant import relationship_response
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 from openai import OpenAI
 from discord import File
 from discord.ext import commands
@@ -10,7 +12,8 @@ import aiohttp
 from utilties.tokenizer import num_tokens_from_string
 import chardet
 from youtube_transcript_grabber import get_transcript
-from pplxapi import pplxresponse
+from utilties.pplxapi import pplxresponse
+import unicodedata
 openai_api_key = OPENAI_API_KEY
 # Set up OpenAI API
 client = OpenAI(api_key=openai_api_key)
@@ -23,11 +26,11 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
-async def send_text_or_file(ctx, generated_text, thread_id=None):
+async def send_text_or_file(ctx, generated_text):
     if len(generated_text) <= 1500: 
         mention = ctx.author.mention  # Mention the user who sent the command
         message = await ctx.send(f"{mention} {generated_text}")  # Send the message
-        return message, thread_id  # Return the message object and thread_id
+        return message  # Return the message object and thread_id
     else:
         # Write the message to a .txt file
         with open('response.txt', 'w') as f:
@@ -36,7 +39,7 @@ async def send_text_or_file(ctx, generated_text, thread_id=None):
         message = await ctx.send(file=File('response.txt'))  # Send and capture the message object
         # Remove the file after sending it
         os.remove('response.txt')
-        return message, thread_id  # Return the message object and thread_id
+        return message  # Return the message object and thread_id
 def get_first_assistant_message_unstructured(data):
     # Loop through the messages to find the first one with the role 'assistant'
     for message in data:
@@ -53,8 +56,15 @@ async def read_txt_file(file_url):
         async with session.get(file_url) as response:
             if response.status == 200:
                 data = await response.read()
+                # Detect the character encoding of the data
                 encoding = chardet.detect(data)['encoding']
-                text = data.decode(encoding).encode('utf-8')
+                # Decode the bytes to a string using the detected encoding
+                text = data.decode(encoding)
+                # Normalize the text to ensure it's in a consistent form
+                # This helps with characters that have multiple possible representations
+                text = unicodedata.normalize('NFKC', text)
+                # Encode the string to bytes using UTF-8 and then decode to ensure it's JSON serializable
+                text = text.encode('utf-8', errors='ignore').decode('utf-8')
                 return text
             else:
                 return None
@@ -67,37 +77,11 @@ async def handle_prompt(ctx, prompt):
             if file_prompt is None:
                 await ctx.send(f"{ctx.author.mention} Failed to read the attached file.")
                 return
-            prompt = f"{prompt}\n{file_prompt}" if prompt else file_prompt
+            prompt = f"{file_prompt}\n{prompt}" if prompt else file_prompt
         else:
             await ctx.send(f"{ctx.author.mention} Please attach a .txt or .py file.")
             return
     return prompt
-##commands
-@bot.command(name='gpt3', help='Selects the appropriate model based on token length. If token length <= 16000, use gpt-3.5-turbo-1106; else, use gpt-4-1106-preview.')
-async def gpt3(ctx, *, prompt: str = None):
-    # Add an eye emoji reaction to the user's command message
-    await ctx.message.add_reaction("👀")
-    # Handle the prompt (including attached files if any)
-    prompt = await handle_prompt(ctx, prompt)
-    if prompt is None:
-        return
-    # Call the assistant and get the response
-    responses = await assistant_response3(prompt=prompt)
-    if not responses:
-        await ctx.send(f"{ctx.author.mention} There was an error processing your request.")
-        return
-    # Extract the thread_id from the response
-    thread_id = responses[0].thread_id
-    response_message = await send_text_or_file(ctx, generated_text)
-    # Store the thread_id with the message_id as the key
-    openai_thread_ids[response_message.id] = thread_id
-    # Get the first assistant message from the structured response
-    generated_text = get_first_assistant_message_unstructured(responses) if responses else None
-    # Send the generated text as a message or a file
-    response_message, thread_id = await send_text_or_file(ctx, generated_text, thread_id) 
-    openai_thread_ids[response_message.id] = thread_id  
-    # Add a check mark reaction to the user's command message after the reply is sent
-    await ctx.message.add_reaction("✅")
 @bot.command(name='gpt4', help='10x cost but much better in reasoning tasks, can intake about 128k tokens')
 async def gpt4(ctx, *, prompt: str = None):
     # Add an eye emoji reaction to the user's command message
@@ -107,16 +91,14 @@ async def gpt4(ctx, *, prompt: str = None):
     if prompt is None:
         return
     # Call the assistant and get the response
-    responses = await assistant_response(prompt=prompt)
+    responses, thread_id = await assistant_response(prompt=prompt)  # Unpack the tuple correctly
     if not responses:
         await ctx.send(f"{ctx.author.mention} There was an error processing your request.")
         return
-    # Extract the thread_id from the response
-    thread_id = responses[0].thread_id
     # Get the first assistant message from the structured response
     generated_text = get_first_assistant_message_unstructured(responses) if responses else None
     # Send the generated text as a message or a file and store the response message
-    response_message, thread_id = await send_text_or_file(ctx, generated_text, thread_id)
+    response_message = await send_text_or_file(ctx, generated_text)
     # Store the thread_id with the message_id as the key
     openai_thread_ids[response_message.id] = thread_id
     # Add a check mark reaction to the user's command message after the reply is sent
@@ -191,27 +173,42 @@ async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
-
+    if message.author.id == 186695709829890048 and message.channel.id == 1195482583010656266:
+        print("message captured")
+        prompt = message.content
+        print("prompt")
+        openai_thread_id = None;
+        responses = await relationship_response(openai_thread_id, prompt)
+        if not responses:
+                await message.channel.send("There was an error processing your request.")
+                return
+        generated_text = get_first_assistant_message_unstructured(responses) if responses else None
+        # Create a context object from the message
+        ctx = await bot.get_context(message)
+        # Send the bot's response in the Discord thread
+        response_message = await send_text_or_file(ctx, generated_text)
+        # Update the openai_thread_ids with the new thread_id
+        openai_thread_ids[response_message.id] = openai_thread_id   
     # If the message is a reply, handle continuing the conversation
     if message.reference:
         referenced_message_id = message.reference.message_id
-        # Check if the referenced message ID is in openai_thread_ids
+            # Check if the referenced message ID is in openai_thread_ids
         if referenced_message_id in openai_thread_ids:
-            # Retrieve the OpenAI thread ID
+                # Retrieve the OpenAI thread ID
             openai_thread_id = openai_thread_ids[referenced_message_id]
-            # Add the user's reply to the OpenAI thread
+                # Add the user's reply to the OpenAI thread
             prompt = message.content  # Assuming you want to use the message content as the prompt
-            responses = await assistant_response(openai_thread_id=openai_thread_id, prompt=prompt)
+            responses, thread_id = await assistant_response(openai_thread_id=openai_thread_id, prompt=prompt)
             if not responses:
                 await message.channel.send("There was an error processing your request.")
                 return
             generated_text = get_first_assistant_message_unstructured(responses) if responses else None
-            # Create a context object from the message
+                # Create a context object from the message
             ctx = await bot.get_context(message)
-            # Send the bot's response in the Discord thread
-            response_message, new_thread_id = await send_text_or_file(ctx, generated_text)
-            # Update the openai_thread_ids with the new thread_id
-            openai_thread_ids[response_message.id] = new_thread_id
+                # Send the bot's response in the Discord thread
+            response_message = await send_text_or_file(ctx, generated_text)
+                # Update the openai_thread_ids with the thread_id
+            openai_thread_ids[response_message.id] = thread_id
         else:
             print(f"Referenced message ID is NOT in openai_thread_ids.")
     else:

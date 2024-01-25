@@ -5,7 +5,6 @@ from openai import OpenAI, BadRequestError
 from pplxapi import pplxresponse
 import asyncio
 client = OpenAI()
-from .tokenizer import num_tokens_from_string, num_tokens_from_messages
 from youtube_transcript_grabber import get_transcript
 async def fetch_and_prepare_content_for_lm_tool(url):
     try:
@@ -145,7 +144,7 @@ By following this optimized prompt, you will generate an effective summary that 
 
     print(f"Responses: {responses}")  # Debugging line
 
-    return responses
+    return (responses, openai_thread_id)
 async def generate_image(prompt, quality):
     try:
         response = client.images.generate(
@@ -161,36 +160,3 @@ async def generate_image(prompt, quality):
             return "Your request was rejected due to content policy violation. Please submit a prompt that is safe and follows Discord guidelines."
         else:
             raise e
-async def assistant_response3(openai_thread_id=None, prompt=None):
-    print(f"OpenAI Thread ID: {openai_thread_id}")  # Debugging line
-    # If an OpenAI thread ID is provided, use it, otherwise create a new thread
-    if openai_thread_id:
-        thread = client.beta.threads.retrieve(openai_thread_id)
-    else:
-        thread = client.beta.threads.create(messages=[{"role": "user", "content": prompt}])
-        openai_thread_id = thread.id  # Store the new OpenAI thread ID
-    print(f"Thread: {thread}")  # Debugging line
-    # Use the hard-coded assistant ID
-    assistant_id = "asst_Zcr8tWsHgMBvbdI9gLcq9p2W" #gpt3 id
-    print(f"Assistant ID: {assistant_id}")  # Debugging line
-    run = client.beta.threads.runs.create(
-        thread_id=openai_thread_id,
-        assistant_id=assistant_id,
-    )
-    # Wait for the run to reach a final state
-    while run.status not in ["completed", "expired", "cancelled", "failed"]:
-        await asyncio.sleep(1)  # wait for 1 second
-        run = client.beta.threads.runs.retrieve(thread_id = run.thread_id, run_id = run.id)  # refresh the run object
-
-    # Check the final status of the run
-    if run.status == "completed":
-        # Retrieve the assistant's responses
-        messages = client.beta.threads.messages.list(thread_id=openai_thread_id)
-        responses = [message for message in messages.data if message.role == "assistant"]
-    else:
-        print(f"Run ended with status: {run.status}")
-        responses = []
-
-    print(f"Responses: {responses}")  # Debugging line
-
-    return responses        

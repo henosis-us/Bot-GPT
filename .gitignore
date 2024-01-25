@@ -2,7 +2,5 @@
 *.db
 *.pyc
 chatgpt-web/
-vars.py
 
-
-vars.env
+.env

@@ -13,9 +13,9 @@ COPY . /app
 # Install dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-ARG OPENAI_API_KEY
-ARG PPLX_API_KEY
-ARG DISCORD_TOKEN
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+ENV PPLX_API_KEY=$PPLX_API_KEY
+ENV DISCORD_TOKEN=$DISCORD_TOKEN
 
 # Command to run the main script
 CMD ["python", "main.py"]
