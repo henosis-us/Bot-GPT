@@ -1,8 +1,7 @@
-from utilties.Openai_Utils import generate_image, assistant_response, assistant_response3
+from utilties.Openai_Utils import generate_image, assistant_response
 import os
 import discord
 import openai
-from relationship_assistant import relationship_response
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 from openai import OpenAI
@@ -11,7 +10,7 @@ from discord.ext import commands
 import aiohttp
 from utilties.tokenizer import num_tokens_from_string
 import chardet
-from youtube_transcript_grabber import get_transcript
+from utilties.youtube_transcript_grabber import get_transcript
 from utilties.pplxapi import pplxresponse
 import unicodedata
 openai_api_key = OPENAI_API_KEY
@@ -172,23 +171,7 @@ openai_thread_ids = {}
 async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
-        return
-    if message.author.id == 186695709829890048 and message.channel.id == 1195482583010656266:
-        print("message captured")
-        prompt = message.content
-        print("prompt")
-        openai_thread_id = None;
-        responses = await relationship_response(openai_thread_id, prompt)
-        if not responses:
-                await message.channel.send("There was an error processing your request.")
-                return
-        generated_text = get_first_assistant_message_unstructured(responses) if responses else None
-        # Create a context object from the message
-        ctx = await bot.get_context(message)
-        # Send the bot's response in the Discord thread
-        response_message = await send_text_or_file(ctx, generated_text)
-        # Update the openai_thread_ids with the new thread_id
-        openai_thread_ids[response_message.id] = openai_thread_id   
+        return 
     # If the message is a reply, handle continuing the conversation
     if message.reference:
         referenced_message_id = message.reference.message_id

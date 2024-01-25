@@ -2,18 +2,6 @@
 
 Bot-GPT is a Discord bot designed to interact with users through various commands, leveraging the OpenAI API and other services.
 
-## Tools
-
-- **Python**: The primary programming language used.
-- **Discord.py**: A Python library for interacting with Discord.
-- **OpenAI API**: Used for generating responses and images.
-- **Docker**: For containerization and easy deployment.
-- **Perplexity AI (PPLX API)**: An alternative language model API (online search).
-- **YouTube Transcript API**: For fetching video transcripts.
-- **BeautifulSoup4**: For parsing HTML content.
-- **Aiohttp**: For making asynchronous HTTP requests.
-- **TikToken**: For tokenizing strings according to model specifications.
-
 ## Features
 
 - **Text and File Responses**: The bot can send messages as text or as a file if the content is too long.
@@ -21,6 +9,7 @@ Bot-GPT is a Discord bot designed to interact with users through various command
 - **Image Generation**: Uses DALL-E 3 model to generate images based on prompts.
 - **Transcript Fetching**: Can retrieve transcripts of YouTube videos.
 - **Token Counting**: Provides an estimate of the number of tokens in a given text.
+- **Internet Query**: Can fetch internet data if the user query requires a search & can parse html
 - **Thread Continuation**: Maintains conversation threads using OpenAI's thread IDs through replies.
 
 ## How to Setup
