@@ -81,8 +81,8 @@ async def handle_prompt(ctx, prompt):
             await ctx.send(f"{ctx.author.mention} Please attach a .txt or .py file.")
             return
     return prompt
-@bot.command(name='gpt4', help='10x cost but much better in reasoning tasks, can intake about 128k tokens')
-async def gpt4(ctx, *, prompt: str = None):
+@bot.command(name='gpt3', help='cheap model 16k token input limit')
+async def gpt3(ctx, *, prompt: str = None):
     # Add an eye emoji reaction to the user's command message
     await ctx.message.add_reaction("👀")
     # Handle the prompt (including attached files if any)
@@ -90,7 +90,7 @@ async def gpt4(ctx, *, prompt: str = None):
     if prompt is None:
         return
     # Call the assistant and get the response
-    responses, thread_id = await assistant_response(prompt=prompt)  # Unpack the tuple correctly
+    responses, thread_id = await assistant_response(prompt=prompt, assistant=3)  # Unpack the tuple correctly
     if not responses:
         await ctx.send(f"{ctx.author.mention} There was an error processing your request.")
         return
@@ -102,7 +102,29 @@ async def gpt4(ctx, *, prompt: str = None):
     openai_thread_ids[response_message.id] = thread_id
     # Add a check mark reaction to the user's command message after the reply is sent
     await ctx.message.add_reaction("✅")
-@bot.command(name='hermes')
+
+@bot.command(name='gpt4', help='10x cost but much better in reasoning tasks, can intake about 128k tokens')
+async def gpt4(ctx, *, prompt: str = None):
+    # Add an eye emoji reaction to the user's command message
+    await ctx.message.add_reaction("👀")
+    # Handle the prompt (including attached files if any)
+    prompt = await handle_prompt(ctx, prompt)
+    if prompt is None:
+        return
+    # Call the assistant and get the response
+    responses, thread_id, = await assistant_response(prompt=prompt, assistant=4)  # Unpack the tuple correctly
+    if not responses:
+        await ctx.send(f"{ctx.author.mention} There was an error processing your request.")
+        return
+    # Get the first assistant message from the structured response
+    generated_text = get_first_assistant_message_unstructured(responses) if responses else None
+    # Send the generated text as a message or a file and store the response message
+    response_message = await send_text_or_file(ctx, generated_text)
+    # Store the thread_id with the message_id as the key
+    openai_thread_ids[response_message.id] = thread_id
+    # Add a check mark reaction to the user's command message after the reply is sent
+    await ctx.message.add_reaction("✅")
+@bot.command(name='pplx', help='internet model')
 async def hermes(ctx, *, user_message: str = None):
     if ctx.message.attachments:
         attachment = ctx.message.attachments[0]

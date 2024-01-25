@@ -1,0 +1,70 @@
+These go into the assistant platform if you want to setup a custom assistant with these tools
+{
+  "name": "generate_image",
+  "description": "Generate an image using DALL-E 3",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "description": "The prompt for DALL-E 3"
+      },
+      "quality": {
+        "type": "string",
+        "description": "The quality of the image, either 'standard' or 'hd'"
+      }
+    },
+    "required": [
+      "prompt",
+      "quality"
+    ]
+  }
+}
+{
+    "name": "get_transcript",
+    "description": "Retrieve the transcript for a given YouTube video URL, or a summary of the transcript of the video transcript is too long",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "youtube_url": {
+          "type": "string",
+          "description": "The full URL of the YouTube video"
+        }
+      },
+      "required": [
+        "youtube_url"
+      ]
+    }
+  }
+  {
+    "name": "query_llm_internet",
+    "description": "Query a language model with internet access to obtain grounded and up-to-date information, 90% accuracy rate please let the user know if any information seems incorrect",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The input query for the language model to process and provide information on"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  }
+  {
+    "name": "urlFetch",
+    "description": "Fetch the content of a webpage as plain text",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The URL of the webpage to fetch"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    }
+  }

@@ -15,7 +15,7 @@ async def fetch_and_prepare_content_for_lm_tool(url):
     except Exception as e:
         print(f"An error occurred while fetching content: {e}")
         return None
-async def assistant_response(openai_thread_id=None, prompt=None):
+async def assistant_response(openai_thread_id=None, prompt=None, assistant=4):
     print(f"OpenAI Thread ID: {openai_thread_id}")  # Debugging line
     print(f"Prompt: {prompt}")  # Debugging line
     # If an OpenAI thread ID is provided, use it, otherwise create a new thread
@@ -38,7 +38,11 @@ async def assistant_response(openai_thread_id=None, prompt=None):
     print(thread_messages.data)
     print(f"Thread: {thread}")  # Debugging line
     # Use the hard-coded assistant ID
-    assistant_id = "asst_z9ChMmBNvr3FucVrXZFZ6vpl"
+    if assistant == 4:
+        assistant_id = "asst_z9ChMmBNvr3FucVrXZFZ6vpl"
+    else:
+        assistant_id = "asst_9JMEFzEZgbbsJEYr4ME6WTsY"
+
     print(f"Assistant ID: {assistant_id}")  # Debugging line
     run = client.beta.threads.runs.create(
         thread_id=openai_thread_id,
