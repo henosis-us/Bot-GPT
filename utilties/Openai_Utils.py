@@ -1,11 +1,11 @@
 # openai_utils.py
 import json
-from urlfetch import urlFetch
+from utilties.urlfetch import urlFetch
 from openai import OpenAI, BadRequestError
-from pplxapi import pplxresponse
+from utilties.pplxapi import pplxresponse
 import asyncio
 client = OpenAI()
-from youtube_transcript_grabber import get_transcript
+from utilties.youtube_transcript_grabber import get_transcript
 async def fetch_and_prepare_content_for_lm_tool(url):
     try:
         # Since the original function is synchronous, use asyncio to run it in an executor

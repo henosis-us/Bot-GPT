@@ -1,6 +1,6 @@
    version: '3'
    services:
-     GPT_bot:
+     bot-gpt:
        build:
          context: .
          dockerfile: Dockerfile
