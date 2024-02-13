@@ -31,9 +31,18 @@ async def send_text_or_file(ctx, generated_text):
         message = await ctx.send(f"{mention} {generated_text}")  # Send the message
         return message  # Return the message object and thread_id
     else:
-        # Write the message to a .txt file
+        # Write the message to a .txt file with line breaks for long lines
         with open('response.txt', 'w') as f:
-            f.write(generated_text)
+            words = generated_text.split()
+            line = ""
+            for word in words:
+                if len(line) + len(word) + 1 > 140:  # +1 for the space
+                    f.write(line + "\n")
+                    line = word
+                else:
+                    line += " " + word if line else word
+            if line:  # Write any remaining text
+                f.write(line)
         # Send the .txt file as an attachment
         message = await ctx.send(file=File('response.txt'))  # Send and capture the message object
         # Remove the file after sending it
@@ -171,7 +180,7 @@ async def tokens(ctx, *, message: str = None):
             await ctx.send(f"{ctx.author.mention} Please attach a .txt file.")
             return
     num_tokens = num_tokens_from_string(message)
-    await ctx.send(f'The message contains {num_tokens} tokens.')
+    await ctx.send(f'The message contains {num_tokens} tokens. Rough input cost: ${num_tokens/100000}')
 
 @bot.command(name='dalle3', help='Generates an image using DALL-E 3 model. --q for higher quality at double cost')
 async def dalle3(ctx, *, prompt: str = None):

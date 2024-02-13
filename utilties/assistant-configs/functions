@@ -21,18 +21,23 @@ These go into the assistant platform if you want to setup a custom assistant wit
   }
 }
 {
-    "name": "get_transcript",
-    "description": "Retrieve the transcript for a given YouTube video URL, or a summary of the transcript of the video transcript is too long",
+    "name": "get_video_context_response",
+    "description": "Retrieve the relevant answer to the user's query from a given YouTube video URL, using a model with the appropriate context length if the video content is too extensive for direct analysis",
     "parameters": {
       "type": "object",
       "properties": {
         "youtube_url": {
           "type": "string",
           "description": "The full URL of the YouTube video"
+        },
+        "user_query": {
+          "type": "string",
+          "description": "The user's query to find relevant information in the video's content"
         }
       },
       "required": [
-        "youtube_url"
+        "youtube_url",
+        "user_query"
       ]
     }
   }

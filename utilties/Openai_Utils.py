@@ -99,27 +99,27 @@ async def assistant_response(openai_thread_id=None, prompt=None, assistant=4):
                         print(f"Image URL: {image_url}")
                     else:
                         print("ALERT NO IMAGE: generate_image returned None or empty string.")
-                if function_name == "get_transcript":
+                if function_name == "get_video_context_response":
                     print("calling video transcript search")
                     output = await get_transcript(arguments["youtube_url"])
+                    user_query = arguments["user_query"]  # Extract the user query from the arguments
+                    # Prepend "transcript:" to the output and append the user query with a newline
                     # If the transcript is too long, call gpt-4 to summarize it with context from the original prompt
                     if len(output) > 32000:
+                        # Prepend "transcript:" to the output and append the user query with a newline
+                        output = f"transcript: {output}\nuser query: {user_query}"
                         summary = client.chat.completions.create(
-                            model="gpt-4-1106-preview",
-                            messages=[{"role": "system", "content": """As a professional summarizer, create a concise and comprehensive summary of the provided text, be it an article, post, conversation, or passage, while adhering to these guidelines:
+                            model="gpt-4-0125-preview",
+                            messages=[{"role": "system", "content": """Given the context provided, analyze the text to understand its main themes and details. Then, based on the user's query that follows, generate a relevant and insightful response that:
 
-Craft a summary that is detailed, thorough, in-depth, and complex, while maintaining clarity and conciseness.
+1. Accurately addresses the user's query by leveraging the context provided.
+2. Presents the answer in a structured and clear format, ensuring it is directly related to the query and the context.
+3. Avoids incorporating external information not present in the initial context or the user's query.
+4. Delivers the response in a concise manner, focusing on delivering value and clarity to the user.
+5. Ensures the response maintains a neutral stance, avoiding ideological bias to provide an objective and balanced perspective.
 
-Incorporate main ideas and essential information, eliminating extraneous language and focusing on critical aspects.
-
-Rely strictly on the provided text, without including external information.
-
-Format the summary in paragraph form for easy understanding.
-
-Conclude your notes with [End of Notes, Message #X] to indicate completion, where "X" represents the total number of messages that I have sent. In other words, include a message counter where you start with #1 and add 1 to the message counter every time I send a message.
-
-By following this optimized prompt, you will generate an effective summary that encapsulates the essence of the given text in a clear, concise, and reader-friendly manner."""}, 
-                                      {"role": "user", "content": output}],
+This approach ensures that the response is not only relevant and tailored to the user's specific inquiry but also grounded in the context provided, offering a comprehensive and focused answer."""},
+                                      {"role": "user", "content": output,}],
                             max_tokens=4000,
                             temperature=.3,
                             top_p=.3
