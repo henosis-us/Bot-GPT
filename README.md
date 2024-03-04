@@ -21,14 +21,14 @@ git clone https://github.com/henosis-us/Bot-GPT.git
 bash
 pip install -r requirements.txt
 if running locally I recommend venv
-3. **Environment Variables**: Set up the necessary environment variables for `DISCORD_TOKEN`, `OPENAI_API_KEY`, and `PPLX_API_KEY`. These can be placed in a `.env` file or set in your environment.
+3. **Environment Variables**: Set up the necessary environment variables for `DISCORD_TOKEN`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `PPLX_API_KEY`. These can be placed in a `.env` file or set in your environment. You can get these from your providers
 
 4. **Docker (Optional)**: If using Docker, build the Docker image using the provided `Dockerfile` and run the container with `docker-compose up`.
 
 5. **Run the Bot**: Start the bot by running `main.py`:
 bash
 python main.py
-
+or use docker
 6. **Invite the Bot**: Create an invite link for your bot and add it to your Discord server.
 
 Make sure to follow the Discord developer documentation to set up a bot account and retrieve your `DISCORD_TOKEN`.
