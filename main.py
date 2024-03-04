@@ -2,7 +2,7 @@ from utilties.Openai_Utils import generate_image, assistant_response
 import os
 import discord
 import openai
-from anthropic import anthropicResponse
+from anth import anthropicResponse
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 from openai import OpenAI

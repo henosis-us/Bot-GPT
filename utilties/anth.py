@@ -1,4 +1,4 @@
-import anthropic
+from anthropic import Anthropic
 async def anthropicResponse(model, messages):
     client = anthropic(
     # defaults to os.environ.get("ANTHROPIC_API_KEY")
