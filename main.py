@@ -2,6 +2,7 @@ from utilties.Openai_Utils import generate_image, assistant_response
 import os
 import discord
 import openai
+from anthropic import anthropicResponse
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 from openai import OpenAI
@@ -26,10 +27,9 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
 async def send_text_or_file(ctx, generated_text):
-    if len(generated_text) <= 1500: 
-        mention = ctx.author.mention  # Mention the user who sent the command
-        message = await ctx.send(f"{mention} {generated_text}")  # Send the message
-        return message  # Return the message object and thread_id
+    if len(generated_text) <= 1500:
+        message = await ctx.reply(generated_text)  # Send the reply
+        return message  # Return the message object
     else:
         # Write the message to a .txt file with line breaks for long lines
         with open('response.txt', 'w') as f:
@@ -44,10 +44,10 @@ async def send_text_or_file(ctx, generated_text):
             if line:  # Write any remaining text
                 f.write(line)
         # Send the .txt file as an attachment
-        message = await ctx.send(file=File('response.txt'))  # Send and capture the message object
+        message = await ctx.reply(file=File('response.txt'))  # Send and capture the message object
         # Remove the file after sending it
         os.remove('response.txt')
-        return message  # Return the message object and thread_id
+        return message  # Return the message object
 def get_first_assistant_message_unstructured(data):
     # Loop through the messages to find the first one with the role 'assistant'
     for message in data:
@@ -133,7 +133,59 @@ async def gpt4(ctx, *, prompt: str = None):
     openai_thread_ids[response_message.id] = thread_id
     # Add a check mark reaction to the user's command message after the reply is sent
     await ctx.message.add_reaction("✅")
-@bot.command(name='pplx', help='internet model')
+
+@bot.command(name='anth', help='Capable model from Anthropic with varied pricing: Haiku: $0.25 / MTok input, $1.25 / MTok output, Hard-working. Sonnet: $3 / MTok input, $15 / MTok output, Powerful. Opus: $15 / MTok input, $75 / MTok output.')
+async def anth(ctx, *, prompt: str = None):
+    # Get prompt and add reaction
+    await ctx.message.add_reaction("👀")
+    prompt = await handle_prompt(ctx, prompt)
+    # Check if the --o flag is used for the opus model
+    if "--o" in prompt:
+        model = "claude-3-opus-20240229"
+    else:
+        model = "claude-3-sonnet-20240229"
+    if prompt is None:
+        print("no prompt")
+        return
+
+    # Initialize the conversation with the prompt
+    messages = [
+        {
+            "role": "user",
+            "content": prompt,
+        }
+    ]
+
+    # Prompt model
+    response = await anthropicResponse(model, messages)
+
+    # Append the model's response to the conversation
+    messages.append({
+        "role": "assistant",
+        "content": response,
+    })
+
+    # Get model response and send it
+    message = await send_text_or_file(ctx, response)
+    
+    # Connect to the SQLite database (creates a new file if it doesn't exist)
+    conn = sqlite3.connect('threads.db')
+    c = conn.cursor()
+
+    # Create the table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS threads
+                 (thread_id INTEGER PRIMARY KEY, messages TEXT)''')
+    referenced_message_id = message.reference.message_id
+    # save data to table
+    c.execute("INSERT INTO threads (thread_id, messages) VALUES (?, ?)",
+              (referenced_message_id, str(messages)))
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+    await ctx.message.add_reaction("✅")
+
+@bot.command(name='pplx', help='internet connected model')
 async def hermes(ctx, *, user_message: str = None):
     if ctx.message.attachments:
         attachment = ctx.message.attachments[0]
@@ -206,7 +258,39 @@ async def on_message(message):
     # If the message is a reply, handle continuing the conversation
     if message.reference:
         referenced_message_id = message.reference.message_id
-            # Check if the referenced message ID is in openai_thread_ids
+        if referenced_message_id in threads.db:
+            prompt = message.content  # Assuming you want to use the message content as the prompt
+            if "--o" in prompt:
+                model = "claude-3-opus-20240229"
+            else:
+                model = "claude-3-sonnet-20240229"
+            # Get messages from db
+            thread_messages = threads.db[referenced_message_id]
+            messages = thread_messages
+            # Prompt model
+            response = await anthropicResponse(model, messages)
+            # Append the model's response to the conversation
+            messages.append({
+                "role": "assistant",
+                "content": response,
+            })
+            # Get model response and send it
+            message = await send_text_or_file(ctx, response)
+            conn = sqlite3.connect('threads.db')
+            c = conn.cursor()
+            #update database id & messages
+            c.execute("SELECT 1 FROM threads WHERE thread_id = ?", (referenced_message_id,))
+            exists = c.fetchone()
+            
+            if exists:
+                # Entry found, now update it with the new reference ID
+                new_reference_id = message.id  # The ID of the message that just came in
+                c.execute("UPDATE threads SET thread_id = ? WHERE thread_id = ?",
+                        (new_reference_id, referenced_message_id))
+            # Commit the changes and close the connection
+            conn.commit()
+            conn.close()
+        # Check if the referenced message ID is in openai_thread_ids
         if referenced_message_id in openai_thread_ids:
                 # Retrieve the OpenAI thread ID
             openai_thread_id = openai_thread_ids[referenced_message_id]
@@ -224,7 +308,7 @@ async def on_message(message):
                 # Update the openai_thread_ids with the thread_id
             openai_thread_ids[response_message.id] = thread_id
         else:
-            print(f"Referenced message ID is NOT in openai_thread_ids.")
+            print(f"Referenced message ID is NOT in thread_ids.")
     else:
         # The message is not a reply and will be ignored by on_message handler.
         print("The message is not a reply and will be ignored by on_message handler.")
