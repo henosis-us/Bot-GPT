@@ -6,7 +6,7 @@ async def pplxresponse(message):
     print(PPLX_API_KEY)
     url = "https://api.perplexity.ai/chat/completions"
     payload = {
-        "model": "pplx-70b-online",
+        "model": "sonar-medium-online",
         "messages": [
             {
                 "role": "system",
