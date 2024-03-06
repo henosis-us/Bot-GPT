@@ -2,7 +2,7 @@ from utilties.Openai_Utils import generate_image, assistant_response
 import os
 import discord
 import openai
-from anth import anthropicResponse
+from utilties.anth import anthropicResponse
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 from openai import OpenAI
@@ -14,6 +14,8 @@ import chardet
 from utilties.youtube_transcript_grabber import get_transcript
 from utilties.pplxapi import pplxresponse
 import unicodedata
+import sqlite3
+import json
 openai_api_key = OPENAI_API_KEY
 # Set up OpenAI API
 client = OpenAI(api_key=openai_api_key)
@@ -147,7 +149,7 @@ async def anth(ctx, *, prompt: str = None):
     if prompt is None:
         print("no prompt")
         return
-
+    print(prompt)
     # Initialize the conversation with the prompt
     messages = [
         {
@@ -258,36 +260,38 @@ async def on_message(message):
     # If the message is a reply, handle continuing the conversation
     if message.reference:
         referenced_message_id = message.reference.message_id
-        if referenced_message_id in threads.db:
+        conn = sqlite3.connect('threads.db')
+        c = conn.cursor()
+        # Check if the referenced message ID exists in the database
+        c.execute("SELECT messages FROM threads WHERE thread_id = ?", (referenced_message_id,))
+        db_result = c.fetchone()
+        conn.close()
+
+        if db_result:
+            # Deserialize the messages from the database result
+            thread_messages = json.loads(db_result[0])
             prompt = message.content  # Assuming you want to use the message content as the prompt
             if "--o" in prompt:
                 model = "claude-3-opus-20240229"
             else:
                 model = "claude-3-sonnet-20240229"
-            # Get messages from db
-            thread_messages = threads.db[referenced_message_id]
-            messages = thread_messages
             # Prompt model
-            response = await anthropicResponse(model, messages)
+            response = await anthropicResponse(model, thread_messages)
             # Append the model's response to the conversation
-            messages.append({
+            thread_messages.append({
                 "role": "assistant",
                 "content": response,
             })
+            # Serialize the updated messages for storage
+            updated_messages_json = json.dumps(thread_messages)
             # Get model response and send it
-            message = await send_text_or_file(ctx, response)
+            ctx = await bot.get_context(message)
+            response_message = await send_text_or_file(ctx, response)
+            # Update the database with the new messages
             conn = sqlite3.connect('threads.db')
             c = conn.cursor()
-            #update database id & messages
-            c.execute("SELECT 1 FROM threads WHERE thread_id = ?", (referenced_message_id,))
-            exists = c.fetchone()
-            
-            if exists:
-                # Entry found, now update it with the new reference ID
-                new_reference_id = message.id  # The ID of the message that just came in
-                c.execute("UPDATE threads SET thread_id = ? WHERE thread_id = ?",
-                        (new_reference_id, referenced_message_id))
-            # Commit the changes and close the connection
+            c.execute("UPDATE threads SET messages = ? WHERE thread_id = ?",
+                      (updated_messages_json, referenced_message_id))
             conn.commit()
             conn.close()
         # Check if the referenced message ID is in openai_thread_ids

@@ -7,3 +7,4 @@ requests
 youtube_transcript_api
 beautifulsoup4
 asyncio
+anthropic
