@@ -25,12 +25,17 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.presences - True
 bot = commands.Bot(command_prefix='!', intents=intents)
-@bot.event
-async def on_ready():
-    print(f'{bot.user.name} has connected to Discord!')
-async def send_text_or_file(ctx, generated_text):
+async def send_text_or_file(ctx, generated_text, referenced_message_id=None):
     if len(generated_text) <= 1500:
         message = await ctx.reply(generated_text)  # Send the reply
+        if referenced_message_id:
+            # Save the referenced message ID to the database
+            conn = sqlite3.connect('threads.db')
+            c = conn.cursor()
+            c.execute("INSERT INTO threads (thread_id, messages) VALUES (?, ?)",
+                      (referenced_message_id, str([])))
+            conn.commit()
+            conn.close()
         return message  # Return the message object
     else:
         # Write the message to a .txt file with line breaks for long lines
@@ -47,6 +52,14 @@ async def send_text_or_file(ctx, generated_text):
                 f.write(line)
         # Send the .txt file as an attachment
         message = await ctx.reply(file=File('response.txt'))  # Send and capture the message object
+        if referenced_message_id:
+            # Save the referenced message ID to the database
+            conn = sqlite3.connect('threads.db')
+            c = conn.cursor()
+            c.execute("INSERT INTO threads (thread_id, messages) VALUES (?, ?)",
+                      (referenced_message_id, str([])))
+            conn.commit()
+            conn.close()
         # Remove the file after sending it
         os.remove('response.txt')
         return message  # Return the message object

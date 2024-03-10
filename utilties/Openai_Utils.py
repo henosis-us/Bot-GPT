@@ -4,6 +4,7 @@ from utilties.urlfetch import urlFetch
 from openai import OpenAI, BadRequestError
 from utilties.pplxapi import pplxresponse
 import asyncio
+from utilties.anth import anthropicResponse
 client = OpenAI()
 from utilties.youtube_transcript_grabber import get_transcript
 async def fetch_and_prepare_content_for_lm_tool(url):
@@ -105,27 +106,13 @@ async def assistant_response(openai_thread_id=None, prompt=None, assistant=4):
                     user_query = arguments["user_query"]  # Extract the user query from the arguments
                     # Prepend "transcript:" to the output and append the user query with a newline
                     # If the transcript is too long, call gpt-4 to summarize it with context from the original prompt
+                    print(user_query)
                     if len(output) > 32000:
                         # Prepend "transcript:" to the output and append the user query with a newline
-                        output = f"transcript: {output}\nuser query: {user_query}"
-                        summary = client.chat.completions.create(
-                            model="gpt-4-0125-preview",
-                            messages=[{"role": "system", "content": """Given the context provided, analyze the text to understand its main themes and details. Then, based on the user's query that follows, generate a relevant and insightful response that:
-
-1. Accurately addresses the user's query by leveraging the context provided.
-2. Presents the answer in a structured and clear format, ensuring it is directly related to the query and the context.
-3. Avoids incorporating external information not present in the initial context or the user's query.
-4. Delivers the response in a concise manner, focusing on delivering value and clarity to the user.
-5. Ensures the response maintains a neutral stance, avoiding ideological bias to provide an objective and balanced perspective.
-
-This approach ensures that the response is not only relevant and tailored to the user's specific inquiry but also grounded in the context provided, offering a comprehensive and focused answer."""},
-                                      {"role": "user", "content": output,}],
-                            max_tokens=4000,
-                            temperature=.3,
-                            top_p=.3
-                        )
-                        output = summary.choices[0].message.content
-                    print(output)
+                        output = f"<transcript>{output}</transcript><user_query>{user_query}</user_query>"
+                        messages = [{"role": "user", "content": output}]
+                        output = await anthropicResponse("claude-3-sonnet-20240229", messages)
+                        print(output)
                     tool_outputs.append({
                         "tool_call_id": tool_call.id,
                         "output": output,
